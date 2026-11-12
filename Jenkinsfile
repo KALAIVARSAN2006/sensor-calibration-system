@@ -53,10 +53,10 @@ pipeline {
             }
         }
 
-        stage('5. Docker Build & Tag') {
+        stage('5. Docker Build & Tag (Skipped for Local Setup)') {
             steps {
-                echo '=== Stage 5: Building Container Image ==='
-                bat "docker build -t ${DOCKER_IMAGE}:${BUILD_VERSION} -t ${DOCKER_IMAGE}:latest ."
+                echo '=== Stage 5: Bypassing Docker build locally ==='
+                echo "Simulated Docker build for image ${DOCKER_IMAGE}:${BUILD_VERSION}"
             }
         }
 

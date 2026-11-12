@@ -1,0 +1,76 @@
+# ==========================================================
+# Azure DevOps CI/CD Pipeline (Unit V - CCS342)
+# Student: KALAIVARSAN V (Roll No: 25)
+# Topic: Sensor Calibration Management System
+# ==========================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  mavenPackageDir: '$(Build.SourcesDirectory)/target'
+  buildConfiguration: 'Release'
+
+stages:
+- stage: BuildAndTest
+  displayName: 'Build, Unit Test & Package'
+  jobs:
+  - job: MavenBuildJob
+    displayName: 'Maven Build & JUnit Verification'
+    steps:
+    - task: JavaToolInstaller@0
+      inputs:
+        versionSpec: '17'
+        jdkArchitectureOption: 'x64'
+        jdkSourceOption: 'PreInstalled'
+
+    - task: Maven@3
+      displayName: 'Execute Maven Lifecycle (clean package)'
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
+
+    - task: CopyFiles@2
+      displayName: 'Copy JAR to Artifact Staging'
+      inputs:
+        SourceFolder: '$(system.defaultworkingdirectory)/target'
+        Contents: '*.jar'
+        TargetFolder: '$(build.artifactstagingdirectory)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Build Artifacts Drop'
+      inputs:
+        PathtoPublish: '$(build.artifactstagingdirectory)'
+        ArtifactName: 'sensor-calibration-drop'
+        publishLocation: 'Container'
+
+- stage: DeployToStaging
+  displayName: 'Automated Deployment Stage'
+  dependsOn: BuildAndTest
+  condition: succeeded()
+  jobs:
+  - deployment: DeployApp
+    displayName: 'Deploy Container to Staging Server'
+    environment: 'staging'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: |
+              echo "Starting Docker Deployment for Sensor Calibration System..."
+              docker stop sensor-calibration-app || true
+              docker rm sensor-calibration-app || true
+              docker run -d --name sensor-calibration-app -p 8080:8080 kalaivarsan/sensor-calibration-mgmt:latest
+              sleep 5
+              curl -s http://localhost:8080/api/health
+            displayName: 'Container Execution & Smoke Test'

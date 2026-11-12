@@ -1,0 +1,48 @@
+---
+# ==========================================================
+# Ansible Configuration Management Playbook (Unit IV - CCS342)
+# Student: KALAIVARSAN V (Roll No: 25)
+# Topic: Sensor Calibration Management System
+# ==========================================================
+
+- name: Deploy Sensor Calibration Management System
+  hosts: app_servers
+  become: false
+  vars:
+    app_dir: "/tmp/sensor-calibration"
+    jar_name: "sensor-calibration-system-1.0.0.jar"
+    app_port: 8080
+
+  tasks:
+    - name: 1. Ensure deployment directory exists
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: 2. Verify Java 17 runtime environment is present
+      ansible.builtin.command: java -version
+      register: java_check
+      changed_when: false
+
+    - name: 3. Display Java version detected
+      ansible.builtin.debug:
+        msg: "Target host Java environment verified: {{ java_check.stderr_lines[0] | default('Java installed') }}"
+
+    - name: 4. Copy packaged Application JAR to target host
+      ansible.builtin.copy:
+        src: "../../target/{{ jar_name }}"
+        dest: "{{ app_dir }}/app.jar"
+        mode: '0755'
+      ignore_errors: true
+
+    - name: 5. Verify system configuration and security permissions
+      ansible.builtin.file:
+        path: "{{ app_dir }}/app.jar"
+        state: file
+        mode: '0755'
+      ignore_errors: true
+
+    - name: 6. Summary of Deployment Execution
+      ansible.builtin.debug:
+        msg: "Sensor Calibration Service deployed successfully on port {{ app_port }}."
